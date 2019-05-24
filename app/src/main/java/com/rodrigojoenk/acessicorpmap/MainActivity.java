@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     boolean removePinAnterior = false;
     int contadorDeAtualizacoesGPS = 0;
     public String[] direcoes = {"vire a direita", "vire a esquerda", "siga em frente"};
-    int counter = 0; //pode deletar após debug de TT
+    int counter = 0; //pode deletar após debug do TTS
     Locale local_BR = new Locale("PT", "BR"); //Configurando linguagem para o TTS
     //Criando lista de permissoes a serem concedidas ao aplicativo
     int PERMISSION_ALL = 1;
@@ -75,8 +75,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     public void atualizouGPS(Location novaLocalizacao) {
         //double longitude = novaLocalizacao.getLongitude();
         //double latitude = novaLocalizacao.getLatitude();
-        this.mViewHolder.campo_long.setText("" + novaLocalizacao.getLongitude());
-        this.mViewHolder.campo_lat.setText("" + novaLocalizacao.getLatitude());
+        this.mViewHolder.campo_long.setText(String.format("%s", novaLocalizacao.getLongitude()));
+        this.mViewHolder.campo_lat.setText(String.format("%s", novaLocalizacao.getLatitude()));
         Toast.makeText(getApplicationContext(), "Parametros de GPS atualizados", Toast.LENGTH_SHORT).show();
     }
 
@@ -94,7 +94,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         //Parte do mapa
         //MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.mapView);
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
+        if (mapFragment != null) {
+            mapFragment.getMapAsync(this);
+        }
 
         //Referenciando campos de texto de Lat e Long
         this.mViewHolder.campo_lat = findViewById(R.id.editTextLat);
@@ -141,7 +143,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
             //Se não permite:
         } else {
-            mViewHolder.campo_texto.setText("Esta aplicação precisa de acesso ao GPS para funcionar corretamente");
+            mViewHolder.campo_texto.setText(getString(R.string.warningGPS));
             Toast.makeText(getApplicationContext(), "Esta aplicação precisa de acesso ao GPS para funcionar corretamente", Toast.LENGTH_SHORT).show();
             LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
             System.exit(0);
@@ -167,6 +169,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 Snackbar.make(v, "Instrução enviada ao usuário", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
                 mViewHolder.campo_texto.setText(direcoes[counter]);
+                //noinspection deprecation
                 objetoTTS.speak(direcoes[counter], TextToSpeech.QUEUE_FLUSH, null);
                 counter++;
                 if (counter == 3) {
