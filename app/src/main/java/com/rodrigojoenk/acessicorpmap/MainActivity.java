@@ -25,6 +25,9 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.GroundOverlay;
+import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
@@ -116,7 +119,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             //Instancia um loc manager
             LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
             //Registrando serviço que verifica alterações no GPS com parametros de tempo e distancia minima para atualizacao
-            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 250, 1, this);
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 150, 1, this);
             //minTime = 0.25 segundos e minDistance = 1 metro
             //Pega as ultimas coords disponíveis
 
@@ -175,7 +178,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 if (counter == 3) {
                     counter = 0;
                 }
-            }   
+            }
         });
     }
 
@@ -246,6 +249,11 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             boolean sucess = mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(
                     this, R.raw.map_style));
         }
+        GroundOverlayOptions meuOverlay = new GroundOverlayOptions()
+                .image(BitmapDescriptorFactory.fromResource(R.drawable.myhouse))
+                .position(minhaCasa, 15)
+                .bearing(-20);
+        GroundOverlay imagemOverlay = mMap.addGroundOverlay(meuOverlay);
 
     }
 
