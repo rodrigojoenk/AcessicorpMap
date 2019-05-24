@@ -175,7 +175,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 if (counter == 3) {
                     counter = 0;
                 }
-            }
+            }   
         });
     }
 
