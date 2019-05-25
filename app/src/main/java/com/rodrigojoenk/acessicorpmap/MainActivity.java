@@ -1,6 +1,7 @@
 package com.rodrigojoenk.acessicorpmap;
 
 import android.Manifest;
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -36,32 +37,28 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements LocationListener, OnMapReadyCallback {
-    boolean aubergineMap = false;
-    boolean removePinAnterior = false;
-    int contadorDeAtualizacoesGPS = 0;
-    public String[] direcoes = {"vire a direita", "vire a esquerda", "siga em frente"};
-    int counter = 0; //pode deletar após debug do TTS
-    Locale local_BR = new Locale("PT", "BR"); //Configurando linguagem para o TTS
-    //Criando lista de permissoes a serem concedidas ao aplicativo
-    int PERMISSION_ALL = 1;
-    String[] PERMISSOES = {
-            android.Manifest.permission.ACCESS_COARSE_LOCATION, // Last location para caso GPS esteja com sinal baixo
-            android.Manifest.permission.ACCESS_FINE_LOCATION,   // GPS + preciso
-            android.Manifest.permission.WRITE_EXTERNAL_STORAGE,  // Escrever no armazenamento
-            android.Manifest.permission.INTERNET // Acesso a internet
+    private boolean aubergineMap = false;
+    private boolean removePinAnterior = false;
+    private int contadorDeAtualizacoesGPS = 0;
+    private String[] direcoes = {"vire a direita", "vire a esquerda", "siga em frente"};
+    private int counter = 0; //pode deletar após debug do TTS
+    private BluetoothAdapter adaptadorBT;
+    private Locale local_BR = new Locale("PT", "BR"); //Configurando linguagem para o TTS
+    private int PERMISSION_ALL = 1;
+    private ViewHolder mViewHolder = new ViewHolder(); //Objeto UI que agrupa componentes da interface
+    private TextToSpeech objetoTTS; //TTS
+    private GoogleMap mMap; //Mapa
+    private LatLng mLocalAtual; //Meu local atual
+    private Marker mMeuMarcador; //Meu marcador
+    private String[] PERMISSOES = {   //Criando lista de permissoes a serem concedidas ao aplicativo
+            Manifest.permission.ACCESS_COARSE_LOCATION, // Last location para caso GPS esteja com sinal baixo
+            Manifest.permission.ACCESS_FINE_LOCATION,   // GPS + preciso
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,  // Escrever no armazenamento
+            Manifest.permission.INTERNET, // Acesso a internet
+            Manifest.permission.BLUETOOTH, // Bluetooth
+            Manifest.permission.BLUETOOTH_ADMIN, //Bluetooth
+            Manifest.permission.ACCESS_COARSE_LOCATION
     };
-
-    //Objeto UI
-    private ViewHolder mViewHolder = new ViewHolder();
-    //TTS
-    private TextToSpeech objetoTTS;
-    //Mapa
-    private GoogleMap mMap;
-    //Meu local atual
-    private LatLng mLocalAtual;
-    //Meu marcador
-    Marker mMeuMarcador;
-
 
     //Método que testa se permissoes foram dadas:
     public static boolean temPermissoes(Context context, String... permissions) {
@@ -76,14 +73,12 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     }
 
     public void atualizouGPS(Location novaLocalizacao) {
-        //double longitude = novaLocalizacao.getLongitude();
-        //double latitude = novaLocalizacao.getLatitude();
         this.mViewHolder.campo_long.setText(String.format("%s", novaLocalizacao.getLongitude()));
         this.mViewHolder.campo_lat.setText(String.format("%s", novaLocalizacao.getLatitude()));
         Toast.makeText(getApplicationContext(), "Parametros de GPS atualizados", Toast.LENGTH_SHORT).show();
     }
 
-    public void limparMapa() {
+    public void limparMapa() { //Limpar marcadores e layers adicionados
         mMap.clear();
     }
 
@@ -93,21 +88,21 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         setContentView(R.layout.activity_main);
         this.mViewHolder.toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(this.mViewHolder.toolbar);
+        adaptadorBT = BluetoothAdapter.getDefaultAdapter();
 
-        //Parte do mapa
-        //MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.mapView);
+        //Inicializando mapa
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         }
 
-        //Referenciando campos de texto de Lat e Long
+        //Referenciando componentes de UI e adicionando ao controlador mViewHolder
         this.mViewHolder.campo_lat = findViewById(R.id.editTextLat);
         this.mViewHolder.campo_long = findViewById(R.id.editTextLong);
         this.mViewHolder.campo_direcao = findViewById(R.id.editTextDirecao);
         this.mViewHolder.campo_texto = findViewById(R.id.textoView);
 
-        //Solicitando permissoes definidas em
+        //Solicitando permissoes definidas
         if (!temPermissoes(this, PERMISSOES)) {
             ActivityCompat.requestPermissions(this, PERMISSOES, PERMISSION_ALL);
         }
@@ -121,37 +116,13 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             //Registrando serviço que verifica alterações no GPS com parametros de tempo e distancia minima para atualizacao
             lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 150, 1, this);
             //minTime = 0.25 segundos e minDistance = 1 metro
-            //Pega as ultimas coords disponíveis
 
-            /*Location ultima_location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-
-            try {
-                double longitude = ultima_location.getLongitude();
-                this.mViewHolder.campo_long.setText(longitude + "");
-            } catch (Exception e) {
-                this.mViewHolder.campo_long.setText(">deu ruim");
-            }
-            try {
-                double latitude = ultima_location.getLatitude();
-                this.mViewHolder.campo_lat.setText(latitude + "");
-            } catch (Exception e) {
-                this.mViewHolder.campo_lat.setText(">deu ruim");
-            }
-            try {
-                String bearing = ultima_location.getProvider();
-                this.mViewHolder.campo_direcao.setText(bearing + "");
-            } catch (Exception e) {
-                this.mViewHolder.campo_direcao.setText(">deu ruim");
-            }*/
-
-            //Se não permite:
-        } else {
+        }   // Se não permite:
+        else {
             mViewHolder.campo_texto.setText(getString(R.string.warningGPS));
             Toast.makeText(getApplicationContext(), "Esta aplicação precisa de acesso ao GPS para funcionar corretamente", Toast.LENGTH_SHORT).show();
-            LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
             System.exit(0);
         }
-
 
         //Bloco sobre TTS
         objetoTTS = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
@@ -163,16 +134,14 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             }
         });
 
-        //Referenciando o botao da tela principal
-        this.mViewHolder.botao = findViewById(R.id.botao);
-        //Colocando listener e código acionado por ele
+        this.mViewHolder.botao = findViewById(R.id.botao); //Botao da tela principal (e listener)
         this.mViewHolder.botao.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Snackbar.make(v, "Instrução enviada ao usuário", Snackbar.LENGTH_LONG)
+                Snackbar.make(v, "Instrução enviada ao usuário", Snackbar.LENGTH_SHORT)
                         .setAction("Action", null).show();
                 mViewHolder.campo_texto.setText(direcoes[counter]);
-                //noinspection deprecation
+                //noinspection deprecation - comentário para remover warning do .speak
                 objetoTTS.speak(direcoes[counter], TextToSpeech.QUEUE_FLUSH, null);
                 counter++;
                 if (counter == 3) {
@@ -204,7 +173,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             limparMapa();
             return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
@@ -212,7 +180,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     public void onLocationChanged(Location location) {
         atualizarMapa(location);
         atualizouGPS(location);
-
     }
 
     private void atualizarMapa(Location location) {
@@ -222,7 +189,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         mLocalAtual = new LatLng(location.getLatitude(), location.getLongitude());
         System.out.println("Este é o novo local!:" + mLocalAtual);
         mMeuMarcador = mMap.addMarker(new MarkerOptions().position(mLocalAtual).title("Pin n: " + ++contadorDeAtualizacoesGPS));
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mLocalAtual, 19));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mLocalAtual, 20));
     }
 
     @Override
@@ -244,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         mMap = googleMap;
         LatLng minhaCasa = new LatLng(-27.597670, -48.542853);
         mMeuMarcador = mMap.addMarker(new MarkerOptions().position(minhaCasa).title("Pin inicial!"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(minhaCasa, 19));
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(minhaCasa, 20));
         if(aubergineMap) {
             boolean sucess = mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(
                     this, R.raw.map_style));
@@ -254,7 +221,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 .position(minhaCasa, 15)
                 .bearing(-20);
         GroundOverlay imagemOverlay = mMap.addGroundOverlay(meuOverlay);
-
     }
 
     //Classe criada para que objetos da view sejam instaciados apenas uma vez
@@ -263,8 +229,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         EditText campo_lat;
         EditText campo_long;
         EditText campo_direcao;
-        Button botao;
         TextView campo_texto;
-        MenuItem limpar_mapa;
+        Button botao;
     }
 }
