@@ -2,7 +2,7 @@
     <string name="app_name">Acessicorp Map</string>
     <string name="action_settings">Configurações</string>
     <string name="welcome_string">Bem vindo ao aplicativo de mapas acessíveis</string>
-    <string name="welcome_button">Instruções!</string>
+    <string name="welcome_button">Onde estou?</string>
     <string name="title_activity_maps">Map</string>
     <string name="warningGPS">Esta aplicação precisa de acesso ao GPS para funcionar corretamente</string>
 </resources>

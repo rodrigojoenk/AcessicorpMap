@@ -1,9 +1,12 @@
 package com.rodrigojoenk.acessicorpmap;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -34,14 +37,15 @@ import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements LocationListener, OnMapReadyCallback {
     private boolean aubergineMap = false;
-    private boolean removePinAnterior = false;
+    private boolean removePinAnterior = true;
     private int contadorDeAtualizacoesGPS = 0;
-    private String[] direcoes = {"vire a direita", "vire a esquerda", "siga em frente"};
-    private int counter = 0; //pode deletar após debug do TTS
+    private List<Address> mEnderecoCompleto;
     private BluetoothAdapter adaptadorBT;
     private Locale local_BR = new Locale("PT", "BR"); //Configurando linguagem para o TTS
     private int PERMISSION_ALL = 1;
@@ -50,6 +54,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private GoogleMap mMap; //Mapa
     private LatLng mLocalAtual; //Meu local atual
     private Marker mMeuMarcador; //Meu marcador
+    private Geocoder mMeuGeoCoder;
     private String[] PERMISSOES = {   //Criando lista de permissoes a serem concedidas ao aplicativo
             Manifest.permission.ACCESS_COARSE_LOCATION, // Last location para caso GPS esteja com sinal baixo
             Manifest.permission.ACCESS_FINE_LOCATION,   // GPS + preciso
@@ -73,6 +78,14 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     }
 
     public void atualizouGPS(Location novaLocalizacao) {
+        Geocoder geocd = new Geocoder(this, local_BR);
+        try {
+            mEnderecoCompleto = geocd.getFromLocation(novaLocalizacao.getLatitude(), novaLocalizacao.getLongitude(), 1);
+                System.out.println(mEnderecoCompleto);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         this.mViewHolder.campo_long.setText(String.format("%s", novaLocalizacao.getLongitude()));
         this.mViewHolder.campo_lat.setText(String.format("%s", novaLocalizacao.getLatitude()));
         Toast.makeText(getApplicationContext(), "Parametros de GPS atualizados", Toast.LENGTH_SHORT).show();
@@ -136,17 +149,14 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
         this.mViewHolder.botao = findViewById(R.id.botao); //Botao da tela principal (e listener)
         this.mViewHolder.botao.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("SetTextI18n")
             @Override
             public void onClick(View v) {
                 Snackbar.make(v, "Instrução enviada ao usuário", Snackbar.LENGTH_SHORT)
                         .setAction("Action", null).show();
-                mViewHolder.campo_texto.setText(direcoes[counter]);
+                mViewHolder.campo_texto.setText("Você está na rua " + nomeRua() +" em: \n Cidade: " + nomeCidade() + " - Estado: " + nomeEstado());
                 //noinspection deprecation - comentário para remover warning do .speak
-                objetoTTS.speak(direcoes[counter], TextToSpeech.QUEUE_FLUSH, null);
-                counter++;
-                if (counter == 3) {
-                    counter = 0;
-                }
+                objetoTTS.speak("Você está na " + nomeRua() +". em " + nomeCidade() + ", " + nomeEstado(), TextToSpeech.QUEUE_FLUSH, null);
             }
         });
     }
@@ -222,6 +232,19 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 .bearing(-20);
         GroundOverlay imagemOverlay = mMap.addGroundOverlay(meuOverlay);
     }
+
+    private String nomeRua() {
+        return mEnderecoCompleto.get(0).getThoroughfare();
+    }
+
+    private String nomeCidade() {
+        return mEnderecoCompleto.get(0).getSubAdminArea();
+    }
+
+    private String nomeEstado() {
+        return mEnderecoCompleto.get(0).getAdminArea();
+    }
+
 
     //Classe criada para que objetos da view sejam instaciados apenas uma vez
     public static class ViewHolder {
