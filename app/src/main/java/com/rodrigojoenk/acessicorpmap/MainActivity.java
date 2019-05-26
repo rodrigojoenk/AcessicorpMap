@@ -1,7 +1,6 @@
 package com.rodrigojoenk.acessicorpmap;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -85,7 +84,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        mViewHolder.campo_texto.setText(String.format("Você está na %s, em: \n %s, %s", nomeRua(), nomeCidade(), nomeEstado()));
         this.mViewHolder.campo_long.setText(String.format("%s", novaLocalizacao.getLongitude()));
         this.mViewHolder.campo_lat.setText(String.format("%s", novaLocalizacao.getLatitude()));
         Toast.makeText(getApplicationContext(), "Parametros de GPS atualizados", Toast.LENGTH_SHORT).show();
@@ -149,12 +148,10 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
         this.mViewHolder.botao = findViewById(R.id.botao); //Botao da tela principal (e listener)
         this.mViewHolder.botao.setOnClickListener(new View.OnClickListener() {
-            @SuppressLint("SetTextI18n")
             @Override
             public void onClick(View v) {
                 Snackbar.make(v, "Instrução enviada ao usuário", Snackbar.LENGTH_SHORT)
                         .setAction("Action", null).show();
-                mViewHolder.campo_texto.setText("Você está na rua " + nomeRua() +" em: \n Cidade: " + nomeCidade() + " - Estado: " + nomeEstado());
                 //noinspection deprecation - comentário para remover warning do .speak
                 objetoTTS.speak("Você está na " + nomeRua() +". em " + nomeCidade() + ", " + nomeEstado(), TextToSpeech.QUEUE_FLUSH, null);
             }
