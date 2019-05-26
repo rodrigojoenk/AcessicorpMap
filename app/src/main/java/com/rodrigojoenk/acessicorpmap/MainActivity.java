@@ -55,7 +55,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private GoogleMap mMap; //Mapa
     private LatLng mLocalAtual; //Meu local atual
     private Marker mMeuMarcador; //Meu marcador
-    private Geocoder mMeuGeoCoder;
     private String[] PERMISSOES = {   //Criando lista de permissoes a serem concedidas ao aplicativo
             Manifest.permission.ACCESS_COARSE_LOCATION, // Last location para caso GPS esteja com sinal baixo
             Manifest.permission.ACCESS_FINE_LOCATION,   // GPS + preciso
@@ -96,6 +95,12 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         this.mViewHolder.toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(this.mViewHolder.toolbar);
         adaptadorBT = BluetoothAdapter.getDefaultAdapter();
+
+        //Testando se suporta BLE
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            Utils.toast(getApplicationContext(), "BLE not supported");
+            finish();
+        }
 
         //Inicializando mapa
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
@@ -149,6 +154,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                         .setAction("Action", null).show();
                 //noinspection deprecation - comentário para remover warning do .speak
                 objetoTTS.speak(mEnderecoFormatado, TextToSpeech.QUEUE_FLUSH, null);
+                System.out.println("Completo:" + mEnderecoCompleto);
+                System.out.println("Formatado:" + mEnderecoFormatado);
             }
         });
     }
@@ -276,8 +283,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     //Classe criada para que objetos da view sejam instaciados apenas uma vez
     public static class ViewHolder {
         Toolbar toolbar;
-        EditText campo_lat;
-        EditText campo_long;
+        TextView campo_lat;
+        TextView campo_long;
         EditText campo_direcao;
         TextView campo_texto;
         Button botao;
