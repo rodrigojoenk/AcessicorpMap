@@ -38,7 +38,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="88dp"
         android:layout_marginTop="364dp"
-        android:text="Latitude"
+        android:text="@string/latitude"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -48,15 +48,16 @@
         android:layout_height="36dp"
         android:layout_marginStart="32dp"
         android:layout_marginTop="385dp"
-        android:editable="false"
         android:ems="10"
         android:gravity="center"
-        android:hint="Aguardando GPS"
-        android:inputType="textPersonName"
+        android:hint="@string/aguardando_gps"
+        android:inputType="none"
         android:textSize="14sp"
         app:layout_constraintEnd_toStartOf="@+id/editTextLong"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        android:importantForAutofill="no"
+        tools:ignore="UnusedAttribute" />
 
     <TextView
         android:id="@+id/textViewLong"
@@ -64,7 +65,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="364dp"
         android:layout_marginEnd="86dp"
-        android:text="Longitude"
+        android:text="@string/longitude"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -74,15 +75,16 @@
         android:layout_height="36dp"
         android:layout_marginTop="385dp"
         android:layout_marginEnd="32dp"
-        android:editable="false"
         android:ems="10"
         android:gravity="center"
-        android:hint="Aguardando GPS"
-        android:inputType="textPersonName"
+        android:hint="@string/aguardando_gps"
+        android:inputType="none"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/editTextLat"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        android:importantForAutofill="no"
+        tools:ignore="UnusedAttribute" />
 
     <EditText
         android:id="@+id/editTextDirecao"
@@ -97,7 +99,9 @@
         android:visibility="invisible"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/botao" />
+        app:layout_constraintTop_toBottomOf="@+id/botao"
+        android:importantForAutofill="no"
+        tools:ignore="LabelFor,UnusedAttribute" />
 
     <fragment
         xmlns:map="http://schemas.android.com/apk/res-auto"
@@ -111,6 +115,6 @@
         map:layout_constraintEnd_toEndOf="parent"
         map:layout_constraintStart_toStartOf="parent"
         map:layout_constraintTop_toTopOf="parent"
-        tools:context=".MapsActivity" />
+        tools:context=".MainActivity" />
 
 </android.support.constraint.ConstraintLayout>

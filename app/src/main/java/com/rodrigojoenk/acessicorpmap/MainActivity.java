@@ -16,6 +16,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -45,6 +46,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private boolean removePinAnterior = true;
     private int contadorDeAtualizacoesGPS = 0;
     private List<Address> mEnderecoCompleto;
+    private String mEnderecoFormatado;
     private BluetoothAdapter adaptadorBT;
     private Locale local_BR = new Locale("PT", "BR"); //Configurando linguagem para o TTS
     private int PERMISSION_ALL = 1;
@@ -77,14 +79,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     }
 
     public void atualizouGPS(Location novaLocalizacao) {
-        Geocoder geocd = new Geocoder(this, local_BR);
-        try {
-            mEnderecoCompleto = geocd.getFromLocation(novaLocalizacao.getLatitude(), novaLocalizacao.getLongitude(), 1);
-                System.out.println(mEnderecoCompleto);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        mViewHolder.campo_texto.setText(String.format("Você está na %s, em: \n %s, %s", nomeRua(), nomeCidade(), nomeEstado()));
+        mEnderecoFormatado = devolveEnderecoFormatado(novaLocalizacao);
         this.mViewHolder.campo_long.setText(String.format("%s", novaLocalizacao.getLongitude()));
         this.mViewHolder.campo_lat.setText(String.format("%s", novaLocalizacao.getLatitude()));
         Toast.makeText(getApplicationContext(), "Parametros de GPS atualizados", Toast.LENGTH_SHORT).show();
@@ -126,7 +121,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             //Instancia um loc manager
             LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
             //Registrando serviço que verifica alterações no GPS com parametros de tempo e distancia minima para atualizacao
-            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 150, 1, this);
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 250, 3, this);
             //minTime = 0.25 segundos e minDistance = 1 metro
 
         }   // Se não permite:
@@ -153,7 +148,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 Snackbar.make(v, "Instrução enviada ao usuário", Snackbar.LENGTH_SHORT)
                         .setAction("Action", null).show();
                 //noinspection deprecation - comentário para remover warning do .speak
-                objetoTTS.speak("Você está na " + nomeRua() +". em " + nomeCidade() + ", " + nomeEstado(), TextToSpeech.QUEUE_FLUSH, null);
+                objetoTTS.speak(mEnderecoFormatado, TextToSpeech.QUEUE_FLUSH, null);
             }
         });
     }
@@ -195,6 +190,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         }
         mLocalAtual = new LatLng(location.getLatitude(), location.getLongitude());
         System.out.println("Este é o novo local!:" + mLocalAtual);
+        mViewHolder.campo_texto.setText(devolveEnderecoFormatado(location));
         mMeuMarcador = mMap.addMarker(new MarkerOptions().position(mLocalAtual).title("Pin n: " + ++contadorDeAtualizacoesGPS));
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mLocalAtual, 20));
     }
@@ -231,17 +227,51 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     }
 
     private String nomeRua() {
-        return mEnderecoCompleto.get(0).getThoroughfare();
+        if (mEnderecoCompleto.get(0).getThoroughfare() == null) {
+            String StringACortar = mEnderecoCompleto.get(0).getFeatureName();
+            String[] listaFeature = StringACortar.split(",");
+            return listaFeature[0];
+          }
+    else {
+            return mEnderecoCompleto.get(0).getThoroughfare();
+        }
     }
-
     private String nomeCidade() {
         return mEnderecoCompleto.get(0).getSubAdminArea();
     }
-
     private String nomeEstado() {
         return mEnderecoCompleto.get(0).getAdminArea();
     }
+    private String nomeLugar() {
+        try {
+            boolean ehNumero = TextUtils.isDigitsOnly(mEnderecoCompleto.get(0).getFeatureName());
+            if(!ehNumero) {
+                return mEnderecoCompleto.get(0).getFeatureName().split(",")[0];
+            }
+        }
+        catch (Exception e) {
+            return "";
+        }
+        return "";
+    }
 
+    private String devolveEnderecoFormatado(Location novaLocalizacao) {
+        Geocoder geocd = new Geocoder(this, local_BR);
+        try {
+            mEnderecoCompleto = geocd.getFromLocation(novaLocalizacao.getLatitude(), novaLocalizacao.getLongitude(), 1);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        if(nomeLugar().equals(nomeRua())) {
+            return String.format("Você está na %s. \n %s, %s",  nomeRua(), nomeCidade(), nomeEstado());
+        }
+        else if(nomeLugar().equals("")) {
+            return String.format("Você está na %s, em: \n %s, %s",  nomeRua(), nomeCidade(), nomeEstado());
+        }
+        else {
+            return String.format("Você está em: %s, na %s \n %s, %s", nomeLugar(), nomeRua(), nomeCidade(), nomeEstado());
+        }
+    }
 
     //Classe criada para que objetos da view sejam instaciados apenas uma vez
     public static class ViewHolder {
