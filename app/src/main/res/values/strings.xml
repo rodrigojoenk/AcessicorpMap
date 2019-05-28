@@ -10,4 +10,6 @@
     <string name="longitude">Longitude</string>
     <string name="buscar_beacons">Buscar beacons</string>
     <string name="limpar_mapa">Limpar mapa</string>
+    <string name="scanning">Escaneando</string>
+    <string name="scan_finished">Scan Finalizado</string>
 </resources>

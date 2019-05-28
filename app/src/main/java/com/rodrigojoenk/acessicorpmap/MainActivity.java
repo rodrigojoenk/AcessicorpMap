@@ -13,6 +13,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.speech.tts.TextToSpeech;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
@@ -48,6 +49,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements LocationListener, OnMapReadyCallback, AdapterView.OnItemClickListener {
     public static final int REQUEST_ENABLE_BT = 1;
@@ -59,7 +61,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private Locale local_BR = new Locale("PT", "BR"); //Configurando linguagem para o TTS
     private int PERMISSION_ALL = 1;
     private ViewHolder mViewHolder = new ViewHolder(); //Objeto UI que agrupa componentes da interface
-    private TextToSpeech objetoTTS; //TTS
+    private TextToSpeech mObjetoTTS; //TTS
 
     private GoogleMap mMap; //Mapa
     private LatLng mLocalAtual; //Meu local atual
@@ -74,6 +76,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private ArrayList<BTLE_Device> mBTDevicesArrayList;
     private ListAdapter_BTLE_Devices adapter;
     private ListView listView;
+
+    private Handler mRepetidor;
+    private Runnable mThread;
 
     private String[] PERMISSOES = {   //Criando lista de permissoes a serem concedidas ao aplicativo
             Manifest.permission.ACCESS_COARSE_LOCATION, // Last location para caso GPS esteja com sinal baixo
@@ -130,15 +135,28 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         mBTDevicesHashMap = new HashMap<>();
         mBTDevicesArrayList = new ArrayList<>();
 
-        //Instanciando o adapter
+        //Instanciando o adapter do bluetooth
         adapter = new ListAdapter_BTLE_Devices(this, R.layout.btle_device_list_item, mBTDevicesArrayList);
 
         //List view sendo preparado
-        listView = new ListView(this);
+        /*listView = new ListView(this);
         listView.setAdapter(adapter);
         listView.setOnItemClickListener(this);
         ((ScrollView)findViewById(R.id.scrollView)).addView(listView);
-        this.mViewHolder.scrollView = findViewById(R.id.scrollView);
+        this.mViewHolder.scrollView = findViewById(R.id.scrollView);*/
+
+        //Rotina que roda a cada 3 segundos, scaneando por devices bluetooth
+        mRepetidor = new Handler();
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                mBTDevicesArrayList.clear();
+                startScan();
+                mRepetidor.postDelayed(this, 3000);
+            }
+        };
+
+        mRepetidor.postDelayed(runnable, 3000); //Rodando pela primeira vez
 
         //Inicializando mapa
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
@@ -175,11 +193,11 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         }
 
         //Bloco sobre TTS
-        objetoTTS = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+        mObjetoTTS = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int status) {
                 if (status == TextToSpeech.SUCCESS) {
-                    objetoTTS.setLanguage(local_BR);
+                    mObjetoTTS.setLanguage(local_BR);
                 }
             }
         });
@@ -191,7 +209,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 Snackbar.make(v, "Instrução enviada ao usuário", Snackbar.LENGTH_SHORT)
                         .setAction("Action", null).show();
                 //noinspection deprecation - comentário para remover warning do .speak
-                objetoTTS.speak(mEnderecoFormatado, TextToSpeech.QUEUE_FLUSH, null);
+                vocalizaString(mEnderecoFormatado);
                 System.out.println("Completo:" + mEnderecoCompleto);
                 System.out.println("Formatado:" + mEnderecoFormatado);
             }
@@ -204,7 +222,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         registerReceiver(mBTStateUpdateReceiver, new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
     }
 
-    @Override
+    /*@Override
     protected void onResume() {
         super.onResume();
         registerReceiver(mBTStateUpdateReceiver, new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
@@ -215,7 +233,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         super.onPause();
         unregisterReceiver(mBTStateUpdateReceiver);
         stopScan();
-    }
+    }*/
 
     @Override
     protected void onStop() {
@@ -236,14 +254,14 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         if (requestCode == REQUEST_ENABLE_BT) {
             // Make sure the request was successful
             if (resultCode == RESULT_OK) {
-                //Utils.toast(getApplicationContext(), "Thank you for turning on Bluetooth");
+                Utils.toast(getApplicationContext(), "Bluetooth ativado com sucesso");
             }
             else if (resultCode == RESULT_CANCELED) {
-                Utils.toast(getApplicationContext(), "Please turn on Bluetooth");
+                Utils.toast(getApplicationContext(), "Por favor ative o bluetooth");
             }
         }
         else if (requestCode == BTLE_SERVICES) {
-            // Do something
+            System.out.println();
         }
     }
 
@@ -398,7 +416,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         startActivityForResult(intent, BTLE_SERVICES);*/
     }
 
-    public void addDevice(BluetoothDevice device, int new_rssi) {
+    public void addDevice(BluetoothDevice device, int new_rssi, String new_name) {
         String address = device.getAddress(); //Pega o MAC ADRESS
         if(!mBTDevicesHashMap.containsKey(address)) { //Device sendo registrado pela primeira vez
             BTLE_Device btle_device = new BTLE_Device(device);
@@ -408,13 +426,14 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             mBTDevicesArrayList.add(btle_device); //Adiciona o device dentro do Array
         }
         else {
-            mBTDevicesHashMap.get(address).setRSSI(new_rssi);
+            Objects.requireNonNull(mBTDevicesHashMap.get(address)).setRSSI(new_rssi);
+            Objects.requireNonNull(mBTDevicesHashMap.get(address)).setName(new_name); //Insere também o nome para o caso de o mesmo ter sido trocado
         }
         adapter.notifyDataSetChanged();
     }
 
     public void startScan() {
-        mViewHolder.botao.setText("Escaneando");
+        mViewHolder.botao.setText(getString(R.string.scanning));
 
         mBTDevicesArrayList.clear();
         mBTDevicesHashMap.clear();
@@ -422,11 +441,38 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         adapter.notifyDataSetChanged();
 
         mBLTeScanner.start();
+
     }
     public void stopScan() {
-        mViewHolder.botao.setText("Terminou");
+        mViewHolder.botao.setText(getString(R.string.scan_finished));
 
        mBLTeScanner.stop();
+       verificaDevices();
+    }
+
+    public void verificaDevices() {
+
+        System.out.println("Foram encontrados " + mBTDevicesArrayList.size() + " dispositivos");
+
+        for(BTLE_Device device:mBTDevicesArrayList) {
+            System.out.println("Nome: " + device.getName());
+            System.out.println("RSSI: " + device.getRSSI());
+            System.out.println("Endereço: " + device.getAddress());
+            System.out.println("->FIM DO OBJETO\n");
+            if(device.getName()!=null) {
+                vocalizaString("Dispositivo " + device.getName() +" RSSI "+device.getRSSI() );
+            }
+        }
+    }
+
+    public void vocalizaString(String textoVocalizado) {
+        mObjetoTTS.speak(textoVocalizado, TextToSpeech.QUEUE_FLUSH, null);
+    }
+
+    public double converteRSSIparaDistancia(int rsss) {
+        //RssiAtOneMeter = TxPower - 62
+
+        return 1;
     }
 
     //Classe criada para que objetos da view sejam instaciados apenas uma vez e fiquem facilmente acessíveis

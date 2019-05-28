@@ -34,7 +34,7 @@ class Scanner_BTLE {
     }
 
     void start() {
-        if (!Utils.checkBluetooth(mBluetoothAdapter)) {
+        if (!Utils.checkBluetooth(mBluetoothAdapter)) { //Teste se bluetooth está ativado
             Utils.requestUserBluetooth(ma);
             ma.stopScan();
         }
@@ -64,7 +64,7 @@ class Scanner_BTLE {
 
             //Aqui inicia de verdade o scan
             mScanning = true;
-            mBluetoothAdapter.startLeScan(mLeScanCallback);
+            mBluetoothAdapter.startLeScan(mLeScanCallback); //Chama o método nativo de busca
         }
 
     }
@@ -74,11 +74,11 @@ class Scanner_BTLE {
         public void onLeScan(final BluetoothDevice device, int rssi, byte[] scanRecord) {
 
             final int new_rssi = rssi;
-            if(rssi > signalStrength) {
+            if(rssi > signalStrength) { //Verifica se o sinal do dispositivo se qualifica para ser adicionado a lista
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        ma.addDevice(device, new_rssi);
+                        ma.addDevice(device, new_rssi, device.getName());
                     }
                 });
             }
