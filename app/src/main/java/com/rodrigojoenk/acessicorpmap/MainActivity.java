@@ -2,7 +2,10 @@ package com.rodrigojoenk.acessicorpmap;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -20,8 +23,11 @@ import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -38,23 +44,37 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity implements LocationListener, OnMapReadyCallback {
+public class MainActivity extends AppCompatActivity implements LocationListener, OnMapReadyCallback, AdapterView.OnItemClickListener {
+    public static final int REQUEST_ENABLE_BT = 1;
+    public static final int BTLE_SERVICES = 2;
     private boolean aubergineMap = false;
     private boolean removePinAnterior = true;
     private int contadorDeAtualizacoesGPS = 0;
-    private List<Address> mEnderecoCompleto;
-    private String mEnderecoFormatado;
-    private BluetoothAdapter adaptadorBT;
+
     private Locale local_BR = new Locale("PT", "BR"); //Configurando linguagem para o TTS
     private int PERMISSION_ALL = 1;
     private ViewHolder mViewHolder = new ViewHolder(); //Objeto UI que agrupa componentes da interface
     private TextToSpeech objetoTTS; //TTS
+
     private GoogleMap mMap; //Mapa
     private LatLng mLocalAtual; //Meu local atual
     private Marker mMeuMarcador; //Meu marcador
+    private List<Address> mEnderecoCompleto;
+    private String mEnderecoFormatado;
+
+    private BroadcastReceiver_BTState mBTStateUpdateReceiver;
+    private Scanner_BTLE mBLTeScanner;
+
+    private HashMap<String, BTLE_Device> mBTDevicesHashMap;
+    private ArrayList<BTLE_Device> mBTDevicesArrayList;
+    private ListAdapter_BTLE_Devices adapter;
+    private ListView listView;
+
     private String[] PERMISSOES = {   //Criando lista de permissoes a serem concedidas ao aplicativo
             Manifest.permission.ACCESS_COARSE_LOCATION, // Last location para caso GPS esteja com sinal baixo
             Manifest.permission.ACCESS_FINE_LOCATION,   // GPS + preciso
@@ -94,13 +114,31 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         setContentView(R.layout.activity_main);
         this.mViewHolder.toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(this.mViewHolder.toolbar);
-        adaptadorBT = BluetoothAdapter.getDefaultAdapter();
+        //adaptadorBT = BluetoothAdapter.getDefaultAdapter();
 
-        //Testando se suporta BLE
+        //Testando se suporta Bluetooth LE. Em caso negativo, fecha aplicação.
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
             Utils.toast(getApplicationContext(), "BLE not supported");
-            finish();
+            //finish(); //Comentado para funcionar no emulador VM
         }
+        //Instancia o receiver de updates de Bluetooth (para fins de debug)
+        mBTStateUpdateReceiver = new BroadcastReceiver_BTState(getApplicationContext());
+        //Instancia o scanner propriamente. Aqui serão inseridos o tempo de scan e o sinal mínimo requerido
+        mBLTeScanner = new Scanner_BTLE(this, 7500, -75);
+
+        //Instancia as listas que receberão os devices
+        mBTDevicesHashMap = new HashMap<>();
+        mBTDevicesArrayList = new ArrayList<>();
+
+        //Instanciando o adapter
+        adapter = new ListAdapter_BTLE_Devices(this, R.layout.btle_device_list_item, mBTDevicesArrayList);
+
+        //List view sendo preparado
+        listView = new ListView(this);
+        listView.setAdapter(adapter);
+        listView.setOnItemClickListener(this);
+        ((ScrollView)findViewById(R.id.scrollView)).addView(listView);
+        this.mViewHolder.scrollView = findViewById(R.id.scrollView);
 
         //Inicializando mapa
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
@@ -161,6 +199,55 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        registerReceiver(mBTStateUpdateReceiver, new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(mBTStateUpdateReceiver, new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(mBTStateUpdateReceiver);
+        stopScan();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        unregisterReceiver(mBTStateUpdateReceiver);
+        stopScan();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+        // Check which request we're responding to
+        if (requestCode == REQUEST_ENABLE_BT) {
+            // Make sure the request was successful
+            if (resultCode == RESULT_OK) {
+                //Utils.toast(getApplicationContext(), "Thank you for turning on Bluetooth");
+            }
+            else if (resultCode == RESULT_CANCELED) {
+                Utils.toast(getApplicationContext(), "Please turn on Bluetooth");
+            }
+        }
+        else if (requestCode == BTLE_SERVICES) {
+            // Do something
+        }
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
@@ -180,6 +267,18 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         }
         if (id == R.id.limpar_mapa) {
             limparMapa();
+            return true;
+        }
+
+        if (id == R.id.scanBT) {
+            mViewHolder.scrollView.setVisibility(View.VISIBLE);
+            mViewHolder.scrollView.bringToFront();
+            if (!mBLTeScanner.isScanning()) {
+                startScan();
+            }
+            else {
+                stopScan();
+            }
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -280,7 +379,57 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         }
     }
 
-    //Classe criada para que objetos da view sejam instaciados apenas uma vez
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        /*Context context = view.getContext();
+
+        Utils.toast(context, "List Item clicked");
+
+        // do something with the text views and start the next activity.
+
+        stopScan();
+
+        String name = mBTDevicesArrayList.get(position).getName();
+        String address = mBTDevicesArrayList.get(position).getAddress();
+
+        Intent intent = new Intent(this, Activity_BTLE_Services.class);
+        intent.putExtra(Activity_BTLE_Services.EXTRA_NAME, name);
+        intent.putExtra(Activity_BTLE_Services.EXTRA_ADDRESS, address);
+        startActivityForResult(intent, BTLE_SERVICES);*/
+    }
+
+    public void addDevice(BluetoothDevice device, int new_rssi) {
+        String address = device.getAddress(); //Pega o MAC ADRESS
+        if(!mBTDevicesHashMap.containsKey(address)) { //Device sendo registrado pela primeira vez
+            BTLE_Device btle_device = new BTLE_Device(device);
+            btle_device.setRSSI(new_rssi);
+
+            mBTDevicesHashMap.put(address, btle_device); //Registra no hashmap
+            mBTDevicesArrayList.add(btle_device); //Adiciona o device dentro do Array
+        }
+        else {
+            mBTDevicesHashMap.get(address).setRSSI(new_rssi);
+        }
+        adapter.notifyDataSetChanged();
+    }
+
+    public void startScan() {
+        mViewHolder.botao.setText("Escaneando");
+
+        mBTDevicesArrayList.clear();
+        mBTDevicesHashMap.clear();
+
+        adapter.notifyDataSetChanged();
+
+        mBLTeScanner.start();
+    }
+    public void stopScan() {
+        mViewHolder.botao.setText("Terminou");
+
+       mBLTeScanner.stop();
+    }
+
+    //Classe criada para que objetos da view sejam instaciados apenas uma vez e fiquem facilmente acessíveis
     public static class ViewHolder {
         Toolbar toolbar;
         TextView campo_lat;
@@ -288,5 +437,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         EditText campo_direcao;
         TextView campo_texto;
         Button botao;
+        ScrollView scrollView;
     }
 }

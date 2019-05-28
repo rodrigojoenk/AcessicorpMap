@@ -52,12 +52,12 @@
         android:ems="10"
         android:gravity="center"
         android:hint="@string/aguardando_gps"
+        android:importantForAutofill="no"
         android:inputType="none"
         android:textSize="14sp"
         app:layout_constraintEnd_toStartOf="@+id/editTextLong"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:importantForAutofill="no"
         tools:ignore="UnusedAttribute" />
 
     <TextView
@@ -79,12 +79,12 @@
         android:ems="10"
         android:gravity="center"
         android:hint="@string/aguardando_gps"
+        android:importantForAutofill="no"
         android:inputType="none"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/editTextLat"
         app:layout_constraintTop_toTopOf="parent"
-        android:importantForAutofill="no"
         tools:ignore="UnusedAttribute" />
 
     <EditText
@@ -95,17 +95,16 @@
         android:layout_marginEnd="8dp"
         android:ems="10"
         android:gravity="center"
+        android:importantForAutofill="no"
         android:inputType="number"
         android:singleLine="true"
         android:visibility="invisible"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/botao"
-        android:importantForAutofill="no"
         tools:ignore="LabelFor,UnusedAttribute" />
 
-    <fragment
-        xmlns:map="http://schemas.android.com/apk/res-auto"
+    <fragment xmlns:map="http://schemas.android.com/apk/res-auto"
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="371dp"
@@ -117,5 +116,20 @@
         map:layout_constraintStart_toStartOf="parent"
         map:layout_constraintTop_toTopOf="parent"
         tools:context=".MainActivity" />
+
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="391dp"
+        android:layout_height="636dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="675dp"
+        android:visibility="gone"
+        android:elevation="2dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0"/>
 
 </android.support.constraint.ConstraintLayout>

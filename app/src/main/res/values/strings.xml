@@ -8,4 +8,6 @@
     <string name="latitude">Latitude</string>
     <string name="aguardando_gps">Aguardando GPS</string>
     <string name="longitude">Longitude</string>
+    <string name="buscar_beacons">Buscar beacons</string>
+    <string name="limpar_mapa">Limpar mapa</string>
 </resources>

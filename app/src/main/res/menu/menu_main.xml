@@ -8,7 +8,11 @@
         android:title="@string/action_settings"
         app:showAsAction="never" />
     <item
-        android:id="@+id/limpar_mapa"
+        android:id="@+id/scanBT"
         android:orderInCategory="101"
-        android:title="Limpar mapa" />
+        android:title="@string/buscar_beacons" />
+    <item
+        android:id="@+id/limpar_mapa"
+        android:orderInCategory="102"
+        android:title="@string/limpar_mapa" />
 </menu>
