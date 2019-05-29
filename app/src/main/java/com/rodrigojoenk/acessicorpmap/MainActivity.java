@@ -28,7 +28,6 @@ import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -80,6 +79,10 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private Handler mRepetidor;
     private Runnable mThread;
 
+    //DEBUG PARA MEDIR DBM IPHONE
+    private List<Integer> amostragens = new ArrayList<>();
+    private Double somatorio = 0.0;
+
     private String[] PERMISSOES = {   //Criando lista de permissoes a serem concedidas ao aplicativo
             Manifest.permission.ACCESS_COARSE_LOCATION, // Last location para caso GPS esteja com sinal baixo
             Manifest.permission.ACCESS_FINE_LOCATION,   // GPS + preciso
@@ -129,7 +132,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         //Instancia o receiver de updates de Bluetooth (para fins de debug)
         mBTStateUpdateReceiver = new BroadcastReceiver_BTState(getApplicationContext());
         //Instancia o scanner propriamente. Aqui serão inseridos o tempo de scan e o sinal mínimo requerido
-        mBLTeScanner = new Scanner_BTLE(this, 7500, -75);
+        mBLTeScanner = new Scanner_BTLE(this, 7500, -105);
 
         //Instancia as listas que receberão os devices
         mBTDevicesHashMap = new HashMap<>();
@@ -289,8 +292,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         }
 
         if (id == R.id.scanBT) {
-            mViewHolder.scrollView.setVisibility(View.VISIBLE);
-            mViewHolder.scrollView.bringToFront();
             if (!mBLTeScanner.isScanning()) {
                 startScan();
             }
@@ -460,7 +461,17 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             System.out.println("Endereço: " + device.getAddress());
             System.out.println("->FIM DO OBJETO\n");
             if(device.getName()!=null) {
-                vocalizaString("Dispositivo " + device.getName() +" RSSI "+device.getRSSI() );
+                vocalizaString("Dispositivo " + device.getName() + " RSSI " +  device.getRSSI());
+
+                if(device.getName().equals("Fernanda")) {
+                    amostragens.add(device.getRSSI());
+                    somatorio = somatorio+device.getRSSI();
+                    System.out.println(">>>>>>>>>");
+                    System.out.println("TOTAL" + somatorio);
+                    System.out.println("TAMANHO DA LISTA" + amostragens.size());
+                    System.out.println("MÉDIA:" + somatorio/amostragens.size());
+                }
+
             }
         }
     }
@@ -469,10 +480,24 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         mObjetoTTS.speak(textoVocalizado, TextToSpeech.QUEUE_FLUSH, null);
     }
 
-    public double converteRSSIparaDistancia(int rsss) {
-        //RssiAtOneMeter = TxPower - 62
+    public double converteRSSIparaDistancia(int rssi) {
+        //RssiAtOneMeter = TxPower - 62. Utilizando -57 como valor médio
+        //Distance = 10 ^ ((Measured Power – RSSI)/(10 * N))
 
-        return 1;
+        //Medição feita com  1 metro e pouca interferência (apenas notebook)
+        //TOTAL-2978.0
+        //TAMANHO DA LISTA 45
+        //MÉDIA:-66.17777777777778
+
+
+        //Mediçao feita com 1.20 metros e  pouca interferência (geladeira)
+        //TOTAL-8636.0
+        //TAMANHO DA LISTA123
+        //MÉDIA:-70.21138211382114
+
+        double measuredPower = -66.17777777777778;
+        double environment = 2; //Value should range from 2 to 4 depending on the environment
+        return 0; //Math.pow(10, (-57 / 10*));
     }
 
     //Classe criada para que objetos da view sejam instaciados apenas uma vez e fiquem facilmente acessíveis
@@ -483,6 +508,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         EditText campo_direcao;
         TextView campo_texto;
         Button botao;
-        ScrollView scrollView;
+        //ScrollView scrollView;
     }
 }
