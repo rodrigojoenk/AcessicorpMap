@@ -44,6 +44,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,6 +57,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private boolean aubergineMap = false;
     private boolean removePinAnterior = true;
     private int contadorDeAtualizacoesGPS = 0;
+    private int counterDeAtualizacoesRSSI;
 
     private Locale local_BR = new Locale("PT", "BR"); //Configurando linguagem para o TTS
     private int PERMISSION_ALL = 1;
@@ -74,14 +76,17 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private HashMap<String, BTLE_Device> mBTDevicesHashMap;
     private ArrayList<BTLE_Device> mBTDevicesArrayList;
     private ListAdapter_BTLE_Devices adapter;
+    private List<String> dispositivosDeInteresse = new ArrayList<>();
     private ListView listView;
 
     private Handler mRepetidor;
     private Runnable mThread;
 
     //DEBUG PARA MEDIR DBM IPHONE
-    private List<Integer> amostragens = new ArrayList<>();
+    private List<Integer> listaBufferRSSI = new ArrayList<>();
     private Double somatorio = 0.0;
+
+    private static DecimalFormat df2 = new DecimalFormat("#.##");
 
     private String[] PERMISSOES = {   //Criando lista de permissoes a serem concedidas ao aplicativo
             Manifest.permission.ACCESS_COARSE_LOCATION, // Last location para caso GPS esteja com sinal baixo
@@ -132,7 +137,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         //Instancia o receiver de updates de Bluetooth (para fins de debug)
         mBTStateUpdateReceiver = new BroadcastReceiver_BTState(getApplicationContext());
         //Instancia o scanner propriamente. Aqui serão inseridos o tempo de scan e o sinal mínimo requerido
-        mBLTeScanner = new Scanner_BTLE(this, 7500, -105);
+        mBLTeScanner = new Scanner_BTLE(this, 7500, -125); //A mais de 3 metros o valor passa dos -100 RSSI
 
         //Instancia as listas que receberão os devices
         mBTDevicesHashMap = new HashMap<>();
@@ -434,7 +439,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     }
 
     public void startScan() {
-        mViewHolder.botao.setText(getString(R.string.scanning));
+        //mViewHolder.botao.setText(getString(R.string.scanning));
 
         mBTDevicesArrayList.clear();
         mBTDevicesHashMap.clear();
@@ -445,33 +450,51 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
     }
     public void stopScan() {
-        mViewHolder.botao.setText(getString(R.string.scan_finished));
+        //mViewHolder.botao.setText(getString(R.string.scan_finished));
+        verificaDevices();
+        mBLTeScanner.stop();
 
-       mBLTeScanner.stop();
-       verificaDevices();
     }
 
     public void verificaDevices() {
-
-        System.out.println("Foram encontrados " + mBTDevicesArrayList.size() + " dispositivos");
-
+        dispositivosDeInteresse.add("Rodrigo");
+        //System.out.println("Foram encontrados " + mBTDevicesArrayList.size() + " dispositivos");
         for(BTLE_Device device:mBTDevicesArrayList) {
-            System.out.println("Nome: " + device.getName());
-            System.out.println("RSSI: " + device.getRSSI());
-            System.out.println("Endereço: " + device.getAddress());
-            System.out.println("->FIM DO OBJETO\n");
-            if(device.getName()!=null) {
-                vocalizaString("Dispositivo " + device.getName() + " RSSI " +  device.getRSSI());
+//            System.out.println("Nome: " + device.getName());
+//            System.out.println("RSSI: " + device.getRSSI());
+//            System.out.println("Endereço: " + device.getAddress());
+//            System.out.println("->FIM DO OBJETO\n");
+            if(device.getName()!=null && device.getName().equals("Rodrigo")) {
+                System.out.println("Nome: " + device.getName());
+                System.out.println("RSSI: " + device.getRSSI());
+                System.out.println("Endereço: " + device.getAddress());
+                counterDeAtualizacoesRSSI++;
+                if (listaBufferRSSI.size() > 9) {
+                    System.out.println("VOU APAGAR O " + listaBufferRSSI.get(0)); //Removendo registro mais antigo
+                    listaBufferRSSI.remove(0); //Removendo registro mais antigo
+                    listaBufferRSSI.add(device.getRSSI());
 
-                if(device.getName().equals("Fernanda")) {
+                    System.out.println("MEDIA" + media(listaBufferRSSI));
+                    String media = String.format(local_BR, "%.2f" , converteRSSIparaDistancia((int)Math.round(media(listaBufferRSSI))));
+                    vocalizaString("MÉDIA:" + media + " metros");
+
+                } else {
+                    listaBufferRSSI.add(device.getRSSI());
+                }
+                System.out.println("ARRAY DE AMOSTRAS RSSI " + listaBufferRSSI);
+                System.out.println(counterDeAtualizacoesRSSI);
+                String distanciaEmMetros = String.format(local_BR, "%.2f", converteRSSIparaDistancia(device.getRSSI()));
+                //vocalizaString("Dispositivo " + device.getName() + " RSSI: " + device.getRSSI() + ". Distância de " + distanciaEmMetros + " metros.");
+
+                /*if(device.getName().equals("Rodrigo")) {         //Trecho usado durante o teste de calibração pare medir RSSI em 1 metro
                     amostragens.add(device.getRSSI());
                     somatorio = somatorio+device.getRSSI();
                     System.out.println(">>>>>>>>>");
                     System.out.println("TOTAL" + somatorio);
                     System.out.println("TAMANHO DA LISTA" + amostragens.size());
                     System.out.println("MÉDIA:" + somatorio/amostragens.size());
-                }
-
+                    System.out.println("DISTÂNCIA:" + converteRSSIparaDistancia(device.getRSSI()));
+                }*/
             }
         }
     }
@@ -482,23 +505,42 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
     public double converteRSSIparaDistancia(int rssi) {
         //RssiAtOneMeter = TxPower - 62. Utilizando -57 como valor médio
-        //Distance = 10 ^ ((Measured Power – RSSI)/(10 * N))
+        //Distance = 10 ^ ((Measured Power – RSSI)/(10 * N)) N->environmentSignalAtenuation
 
         //Medição feita com  1 metro e pouca interferência (apenas notebook)
         //TOTAL-2978.0
         //TAMANHO DA LISTA 45
         //MÉDIA:-66.17777777777778
 
-
         //Mediçao feita com 1.20 metros e  pouca interferência (geladeira)
         //TOTAL-8636.0
         //TAMANHO DA LISTA123
         //MÉDIA:-70.21138211382114
 
-        double measuredPower = -66.17777777777778;
-        double environment = 2; //Value should range from 2 to 4 depending on the environment
-        return 0; //Math.pow(10, (-57 / 10*));
+        double measuredPower = -68.0; //Valor medido a partir
+        //Minha casa = 2.5 // Empresa = 3
+        double environmentSignalAtenuation = 2.5; //Value should range from 2 to 4 depending on the environment. Default being 2. 3 in case there are medium radio interference and 4 in case of lots of radio comm
+        return Math.pow(10, ((measuredPower-rssi) / (10*environmentSignalAtenuation)));
     }
+
+    private static double media(List<Integer> m) {
+        double soma = 0;
+        for(int valor:m) {
+            soma+= valor;
+        }
+        return soma/m.size();
+    }
+
+//    private static double mediana(List<Integer> m) {
+//        List<Integer> temp = m;
+//        Collections.sort(temp);
+//        int meio = m.size()/2;
+//        if (m.size()%2 == 1) {
+//            return m.get(meio);
+//        } else {
+//            return (m.get(meio-1) + m.get(meio)) / 2.0;
+//        }
+//    }
 
     //Classe criada para que objetos da view sejam instaciados apenas uma vez e fiquem facilmente acessíveis
     public static class ViewHolder {
