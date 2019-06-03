@@ -13,7 +13,6 @@ import android.widget.TextView;
 import java.util.ArrayList;
 
 /**
- * Created by Kelvin on 5/7/16.
  * Array adapter que monta a lista de devices durante a execução
  */
 public class ListAdapter_BTLE_Devices extends ArrayAdapter<BTLE_Device> {

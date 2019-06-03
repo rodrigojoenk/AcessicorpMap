@@ -2,7 +2,6 @@ package com.rodrigojoenk.acessicorpmap;
 
 import android.bluetooth.BluetoothDevice;
 /**
- * Created by Kelvin on 4/18/16.
  * Wrapper para os objetos bluetooth
  */
 public class BTLE_Device {

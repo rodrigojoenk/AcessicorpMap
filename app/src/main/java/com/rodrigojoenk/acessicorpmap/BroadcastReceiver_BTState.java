@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 
 /**
- * Created by Kelvin on 4/18/16.
  * Classe com as mensagens de status de bluetooth para debug
  */
 public class BroadcastReceiver_BTState extends BroadcastReceiver {

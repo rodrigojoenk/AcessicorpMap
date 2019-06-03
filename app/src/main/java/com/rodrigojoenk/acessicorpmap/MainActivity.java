@@ -469,7 +469,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 System.out.println("RSSI: " + device.getRSSI());
                 System.out.println("Endereço: " + device.getAddress());
                 counterDeAtualizacoesRSSI++;
-                if (listaBufferRSSI.size() > 9) {
+                if (listaBufferRSSI.size() > 11) {
                     System.out.println("VOU APAGAR O " + listaBufferRSSI.get(0)); //Removendo registro mais antigo
                     listaBufferRSSI.remove(0); //Removendo registro mais antigo
                     listaBufferRSSI.add(device.getRSSI());
