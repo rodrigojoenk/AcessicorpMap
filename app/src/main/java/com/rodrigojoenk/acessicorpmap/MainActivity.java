@@ -36,7 +36,6 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.GroundOverlay;
 import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
@@ -77,6 +76,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private ArrayList<BTLE_Device> mBTDevicesArrayList;
     private ListAdapter_BTLE_Devices adapter;
     private List<String> dispositivosDeInteresse = new ArrayList<>();
+    private String dispositivoDeInteresse = "Apresentacao";
+    private String distanciaEmMetros;
     private ListView listView;
 
     private Handler mRepetidor;
@@ -84,7 +85,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
     //DEBUG PARA MEDIR DBM IPHONE
     private List<Integer> listaBufferRSSI = new ArrayList<>();
-    private Double somatorio = 0.0;
+    //private Double somatorio = 0.0;
 
     private static DecimalFormat df2 = new DecimalFormat("#.##");
 
@@ -177,6 +178,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         this.mViewHolder.campo_long = findViewById(R.id.editTextLong);
         this.mViewHolder.campo_direcao = findViewById(R.id.editTextDirecao);
         this.mViewHolder.campo_texto = findViewById(R.id.textoView);
+        this.mViewHolder.texto_distancia = findViewById(R.id.textViewDistancia);
+
+        mViewHolder.texto_distancia.setText("Dispositivo de interesse: " + dispositivoDeInteresse);
 
         //Solicitando permissoes definidas
         if (!temPermissoes(this, PERMISSOES)) {
@@ -217,7 +221,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 Snackbar.make(v, "Instrução enviada ao usuário", Snackbar.LENGTH_SHORT)
                         .setAction("Action", null).show();
                 //noinspection deprecation - comentário para remover warning do .speak
-                vocalizaString(mEnderecoFormatado);
+                vocalizaString("Dispositivo de interesse: " + dispositivoDeInteresse + ":\nDetectado na distância de: " + distanciaEmMetros + " metros");
+                //vocalizaString(mEnderecoFormatado);
                 System.out.println("Completo:" + mEnderecoCompleto);
                 System.out.println("Formatado:" + mEnderecoFormatado);
             }
@@ -353,7 +358,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 .image(BitmapDescriptorFactory.fromResource(R.drawable.myhouse))
                 .position(minhaCasa, 15)
                 .bearing(-20);
-        GroundOverlay imagemOverlay = mMap.addGroundOverlay(meuOverlay);
+        //GroundOverlay imagemOverlay = mMap.addGroundOverlay(meuOverlay); //Plota imagem da casa
     }
 
     private String nomeRua() {
@@ -460,30 +465,37 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         dispositivosDeInteresse.add("Rodrigo");
         //System.out.println("Foram encontrados " + mBTDevicesArrayList.size() + " dispositivos");
         for(BTLE_Device device:mBTDevicesArrayList) {
+            //#DEBUG: Imprime detalhes de cada dispositivo encontrado
 //            System.out.println("Nome: " + device.getName());
 //            System.out.println("RSSI: " + device.getRSSI());
 //            System.out.println("Endereço: " + device.getAddress());
 //            System.out.println("->FIM DO OBJETO\n");
-            if(device.getName()!=null && device.getName().equals("Rodrigo")) {
+            if(device.getName()!=null && device.getName().equals(dispositivoDeInteresse)) {    //Aqui era hardcoded nome do dispositivo, agora pode ser mostrado na interface
                 System.out.println("Nome: " + device.getName());
                 System.out.println("RSSI: " + device.getRSSI());
                 System.out.println("Endereço: " + device.getAddress());
                 counterDeAtualizacoesRSSI++;
+
                 if (listaBufferRSSI.size() > 11) {
-                    System.out.println("VOU APAGAR O " + listaBufferRSSI.get(0)); //Removendo registro mais antigo
-                    listaBufferRSSI.remove(0); //Removendo registro mais antigo
+                    listaBufferRSSI.remove(0);
                     listaBufferRSSI.add(device.getRSSI());
+
+                    ///Código continua
 
                     System.out.println("MEDIA" + media(listaBufferRSSI));
                     String media = String.format(local_BR, "%.2f" , converteRSSIparaDistancia((int)Math.round(media(listaBufferRSSI))));
-                    vocalizaString("MÉDIA:" + media + " metros");
+                    distanciaEmMetros = media;
+                    //vocalizaString("Disância:" + distanciaEmMetros + " metros");
 
                 } else {
                     listaBufferRSSI.add(device.getRSSI());
                 }
                 System.out.println("ARRAY DE AMOSTRAS RSSI " + listaBufferRSSI);
                 System.out.println(counterDeAtualizacoesRSSI);
-                String distanciaEmMetros = String.format(local_BR, "%.2f", converteRSSIparaDistancia(device.getRSSI()));
+                //distanciaEmMetros = String.format(local_BR, "%.2f", converteRSSIparaDistancia(device.getRSSI()));
+                if(distanciaEmMetros!=null) {
+                    mViewHolder.texto_distancia.setText("Dispositivo de interesse: " + dispositivoDeInteresse + ":\nDetectado na distância de: " + distanciaEmMetros + " metros");
+                }
                 //vocalizaString("Dispositivo " + device.getName() + " RSSI: " + device.getRSSI() + ". Distância de " + distanciaEmMetros + " metros.");
 
                 /*if(device.getName().equals("Rodrigo")) {         //Trecho usado durante o teste de calibração pare medir RSSI em 1 metro
@@ -503,24 +515,24 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         mObjetoTTS.speak(textoVocalizado, TextToSpeech.QUEUE_FLUSH, null);
     }
 
+    //RssiAtOneMeter = TxPower - 62. Utilizando -57 como valor médio
+    //Distance = 10 ^ ((Measured Power – RSSI)/(10 * N)) N->environmentSignalAtenuation
+
+    //Medição feita com  1 metro e pouca interferência (apenas notebook)
+    //TOTAL-2978.0
+    //TAMANHO DA LISTA 45
+    //MÉDIA:-66.17777777777778
+
+    //Mediçao feita com 1.20 metros e  pouca interferência (geladeira)
+    //TOTAL-8636.0
+    //TAMANHO DA LISTA123
+    //MÉDIA:-70.21138211382114
+
+
     public double converteRSSIparaDistancia(int rssi) {
-        //RssiAtOneMeter = TxPower - 62. Utilizando -57 como valor médio
-        //Distance = 10 ^ ((Measured Power – RSSI)/(10 * N)) N->environmentSignalAtenuation
-
-        //Medição feita com  1 metro e pouca interferência (apenas notebook)
-        //TOTAL-2978.0
-        //TAMANHO DA LISTA 45
-        //MÉDIA:-66.17777777777778
-
-        //Mediçao feita com 1.20 metros e  pouca interferência (geladeira)
-        //TOTAL-8636.0
-        //TAMANHO DA LISTA123
-        //MÉDIA:-70.21138211382114
-
-        double measuredPower = -68.0; //Valor medido a partir
-        //Minha casa = 2.5 // Empresa = 3
-        double environmentSignalAtenuation = 2.5; //Value should range from 2 to 4 depending on the environment. Default being 2. 3 in case there are medium radio interference and 4 in case of lots of radio comm
-        return Math.pow(10, ((measuredPower-rssi) / (10*environmentSignalAtenuation)));
+        double potenciaMedida = -68.0; //Valor medido a partir da medição do emissor a 1 metro
+        double atenuacaoDeSinalAmbiente = 2.5; //Valor de 2 a 4 que varia conforme ambiente                          /Minha casa = 2.5 // Empresa = 3
+        return Math.pow(10, ((potenciaMedida-rssi) / (10*atenuacaoDeSinalAmbiente)));
     }
 
     private static double media(List<Integer> m) {
@@ -550,6 +562,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         EditText campo_direcao;
         TextView campo_texto;
         Button botao;
+        TextView texto_distancia;
         //ScrollView scrollView;
     }
 }

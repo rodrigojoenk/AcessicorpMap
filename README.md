@@ -9,7 +9,7 @@ Inclui a utilização das seguintes tecnologias, mas não limitado:
 - BLE
 
 Work in progress:
-- [X] Vocalização de endereços
-- [ ] Bluetooth communication
-- [ ] Beacon
-- [ ] Triangulação por Beacon
+- [X] Vocalização de textos
+- [X] Bluetooth communication
+- [X] Algoritmo de suavização de sinal RSSI recebido
+- [ ] Aceitar múltiplos dispositivos de interesse
